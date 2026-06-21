@@ -27,6 +27,9 @@ import argparse
 import csv
 import re
 from pathlib import Path
+import time
+from collections import defaultdict
+
 
 import numpy as np
 
@@ -34,6 +37,9 @@ import numpy as np
 # --------------------------
 # Basic utilities
 # --------------------------
+
+def new_timer():
+    return defaultdict(float)
 
 def expit(x):
     return np.exp(x) / (1 + np.exp(x))
@@ -176,7 +182,10 @@ def init_constrained_greedy(dist, k):
 # Simulation methods
 # --------------------------
 
-def run_unconstrained_1to1(X, Y, g, n_mcmc, beta, rng):
+def run_unconstrained_1to1(X, Y, g, n_mcmc, beta, rng, profile=False):
+    timing = new_timer()
+
+    t0 = time.perf_counter()
     rc, dn = recipient_donor_indices(g)
     n_rc = len(rc)
     n_dn = len(dn)
@@ -189,29 +198,38 @@ def run_unconstrained_1to1(X, Y, g, n_mcmc, beta, rng):
     p = beta
     alpha = (1 / (dist_df ** p))
     alpha = alpha / alpha.sum(axis=1, keepdims=True)
+    timing["setup"] += time.perf_counter() - t0
 
+    t0 = time.perf_counter()
     est = np.empty(n_mcmc)
     estdiff = np.empty(n_mcmc)
     var = np.empty(n_mcmc)
     varpaired = np.empty(n_mcmc)
 
     Y_rc = Y[rc]
+    timing["allocation"] += time.perf_counter() - t0
 
     for j in range(n_mcmc):
+        t0 = time.perf_counter()
         match_cols = np.array([rng.choice(n_dn, p=alpha[r]) for r in range(n_rc)])
         Y_match = Y[dn[match_cols]]
+        timing["mcmc_sampling"] += time.perf_counter() - t0
 
+        t0 = time.perf_counter()
         Y_oc = np.concatenate([Y_rc, Y_match])
         g_oc = np.concatenate([np.ones(n_rc), np.zeros(n_rc)])
 
         est[j], var[j] = lm_slope_variance(Y_oc, g_oc)
         estdiff[j] = Y_rc.mean() - Y_match.mean()
         varpaired[j] = np.var(Y_rc - Y_match, ddof=1) / len(Y_rc)
-
+        timing["mcmc_estimation"] += time.perf_counter() - t0
+    
+    t0 = time.perf_counter()
     est_bar, u_bar, b, t = mi_total_variance(est, var)
     _, u_paired, _, t_paired = mi_total_variance(est, varpaired)
+    timing["summary"] += time.perf_counter() - t0
 
-    return {
+    result = {
         "est": est_bar,
         "est_med": float(np.median(est)),
         "wiVar": u_bar,
@@ -222,8 +240,29 @@ def run_unconstrained_1to1(X, Y, g, n_mcmc, beta, rng):
         "estdiff": float(estdiff.mean()),
     }
 
+    if profile:
+        sampling_time = timing["mcmc_sampling"]
+        estimation_time = timing["mcmc_estimation"]
+        mcmc_time = sampling_time + estimation_time
+        method_time = sum(timing.values())
+        n_draws = int(n_mcmc * n_rc)
 
-def run_unconstrained_1tok(X, Y, g, n_mcmc, beta, rng, k=2):
+        result.update({f"time_{k}": v for k, v in timing.items()})
+
+        result["time_mcmc_total"] = mcmc_time
+        result["time_method_total"] = method_time
+
+        result["n_sampling_draws"] = n_draws
+        result["time_per_sampling_draw"] = sampling_time / n_draws
+
+        result["share_sampling_in_mcmc"] = sampling_time / mcmc_time
+        result["share_sampling_in_method"] = sampling_time / method_time
+        result["share_estimation_in_method"] = estimation_time / method_time
+        result["share_mcmc_in_method"] = mcmc_time / method_time
+
+    return result
+
+def run_unconstrained_1tok(X, Y, g, n_mcmc, beta, rng, k=2, profile=False):
     rc, dn = recipient_donor_indices(g)
     n_rc = len(rc)
     n_dn = len(dn)
@@ -311,7 +350,7 @@ def run_unconstrained_1tok(X, Y, g, n_mcmc, beta, rng, k=2):
     }
 
 
-def run_constrained_1to1(X, Y, g, n_mcmc, beta, pstar, rng):
+def run_constrained_1to1(X, Y, g, n_mcmc, beta, pstar, rng, profile=False):
     rc, dn = recipient_donor_indices(g)
     n_rc = len(rc)
     n_dn = len(dn)
@@ -400,7 +439,7 @@ def run_constrained_1to1(X, Y, g, n_mcmc, beta, pstar, rng):
     }
 
 
-def run_constrained_1tok(X, Y, g, n_mcmc, beta, pstar, rng, k=2):
+def run_constrained_1tok(X, Y, g, n_mcmc, beta, pstar, rng, k=2, profile=False):
     rc, dn = recipient_donor_indices(g)
     n_rc = len(rc)
     n_dn = len(dn)
@@ -537,8 +576,8 @@ def main():
     parser.add_argument("--pstar", type=float, default=0.5)
     parser.add_argument("--max-sim", type=int, default=None, help="Run only first max-sim datasets")
     parser.add_argument("--true-tau", type=float, default=1.0)
+    parser.add_argument("--profile", action="store_true", help="Record runtime breakdown columns")
 
-    # New output controls.
     parser.add_argument("--out-dir", type=str, default="results", help="Folder where result CSVs are saved")
     parser.add_argument("--out-prefix", type=str, default="results", help="Prefix for auto-numbered CSVs")
     parser.add_argument("--out", type=str, default=None, help="Exact output path. If omitted, saves out-dir/out-prefix_#.csv")
@@ -568,17 +607,36 @@ def main():
         if s == 0 or (s + 1) % args.print_every == 0 or (s + 1) == n_sim:
             print(f"Simulation {s + 1}/{n_sim}")
 
+        sim_start = time.perf_counter()
+
+        prep_start = time.perf_counter()
         X = X_all[s]
         Y = Y_all[s]
         g = g_all[s]
-
         rng = np.random.default_rng(int(seeds[s]) + 1_000_000)
+        sim_prep_time = time.perf_counter() - prep_start
 
+        method_start = time.perf_counter()
         if args.method in {"constrained_1to1", "constrained_1tok"}:
-            result = method_func(X, Y, g, args.n_mcmc, args.beta, args.pstar, rng)
+            result = method_func(
+                X, Y, g,
+                args.n_mcmc,
+                args.beta,
+                args.pstar,
+                rng,
+                profile=args.profile,
+            )
         else:
-            result = method_func(X, Y, g, args.n_mcmc, args.beta, rng)
+            result = method_func(
+                X, Y, g,
+                args.n_mcmc,
+                args.beta,
+                rng,
+                profile=args.profile,
+            )
+        method_time = time.perf_counter() - method_start
 
+        post_start = time.perf_counter()
         result = add_ci(result, true_tau=args.true_tau, var_col="miVar")
         result = {
             "sim": s + 1,
@@ -590,6 +648,17 @@ def main():
             "result_file": str(out_path),
             **result,
         }
+        sim_post_time = time.perf_counter() - post_start
+
+        sim_total_time = time.perf_counter() - sim_start
+
+        if args.profile:
+            result["time_sim_prep"] = sim_prep_time
+            result["time_method_call"] = method_time
+            result["time_sim_post"] = sim_post_time
+            result["time_sim_total"] = sim_total_time
+            result["share_method_in_sim"] = method_time / sim_total_time
+
         rows.append(result)
 
     fieldnames = sorted(set().union(*(r.keys() for r in rows)))

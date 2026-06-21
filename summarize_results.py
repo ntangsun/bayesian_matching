@@ -95,8 +95,32 @@ def summarize_one(path, true_tau=1.0):
     elif "acceptance_count" in df.columns:
         out["mean_acceptance_count"] = df["acceptance_count"].mean()
 
-    return out
+    timing_cols = [
+        "time_sim_total",
+        "time_sim_prep",
+        "time_method_call",
+        "time_sim_post",
+        "time_setup",
+        "time_allocation",
+        "time_mcmc_sampling",
+        "time_mcmc_estimation",
+        "time_mcmc_total",
+        "time_summary",
+        "time_method_total",
+        "share_method_in_sim",
+        "share_sampling_in_mcmc",
+        "share_mcmc_in_method",
+        "n_sampling_draws",
+        "time_per_sampling_draw",
+        "share_sampling_in_method",
+        "share_estimation_in_method",
+    ]
 
+    for col in timing_cols:
+        if col in df.columns:
+            out[f"mean_{col}"] = df[col].mean()
+
+    return out
 
 def get_paths(results_file=None, results_dir=None, pattern="*.csv"):
     if results_file is not None:
@@ -117,7 +141,10 @@ def get_paths(results_file=None, results_dir=None, pattern="*.csv"):
 
 
 def print_compact(summary_df):
-    compact_cols = [
+    # -----------------------------
+    # Statistical summary (table)
+    # -----------------------------
+    stats_cols = [
         "file",
         "method",
         "beta",
@@ -130,30 +157,100 @@ def print_compact(summary_df):
         "mean_ci_length",
         "mean_acceptance_rate",
     ]
-    compact_cols = [c for c in compact_cols if c in summary_df.columns]
 
-    compact = summary_df[compact_cols].copy()
-    numeric_cols = compact.select_dtypes(include="number").columns
-    compact[numeric_cols] = compact[numeric_cols].round(4)
+    stats_cols = [c for c in stats_cols if c in summary_df.columns]
 
-    print("\nCompact summary:")
-    print(compact.to_string(index=False))
+    stats = summary_df[stats_cols].copy()
+    num_cols = stats.select_dtypes(include="number").columns
+    stats[num_cols] = stats[num_cols].round(4)
 
+    print("\n=== Statistical Summary ===")
+    print(stats.to_string(index=False))
+
+    # -----------------------------
+    # Runtime summary (vertical)
+    # -----------------------------
+    runtime_cols = [
+        "mean_time_sim_total",
+        "mean_time_sim_prep",
+        "mean_time_method_call",
+        "mean_time_sim_post",
+        "mean_share_method_in_sim",
+        "mean_time_method_total",
+        "mean_time_setup",
+        "mean_time_allocation",
+        "mean_time_summary",
+        "mean_time_mcmc_total",
+        "mean_time_mcmc_sampling",
+        "mean_time_mcmc_estimation",
+        "mean_n_sampling_draws",
+        "mean_time_per_sampling_draw",
+        "mean_share_sampling_in_mcmc",
+        "mean_share_sampling_in_method",
+        "mean_share_estimation_in_method",
+        "mean_share_mcmc_in_method",
+    ]
+
+    runtime_cols = [c for c in runtime_cols if c in summary_df.columns]
+
+    if runtime_cols:
+        for _, row in summary_df.iterrows():
+
+            print("\n" + "=" * 80)
+            print(f"Runtime Profile: {row['file']}")
+            print("=" * 80)
+
+            print("\n[Simulation Loop]")
+            for col in [
+                "mean_time_sim_total",
+                "mean_time_sim_prep",
+                "mean_time_method_call",
+                "mean_time_sim_post",
+                "mean_share_method_in_sim",
+            ]:
+                if col in row and pd.notna(row[col]):
+                    print(f"{col:<35} {row[col]:.6f}")
+
+            print("\n[Method Internals]")
+            for col in [
+                "mean_time_method_total",
+                "mean_time_setup",
+                "mean_time_allocation",
+                "mean_time_summary",
+                "mean_time_mcmc_total",
+                "mean_time_mcmc_sampling",
+                "mean_time_mcmc_estimation",
+            ]:
+                if col in row and pd.notna(row[col]):
+                    print(f"{col:<35} {row[col]:.6f}")
+
+            print("\n[MCMC Breakdown]")
+            for col in [
+                "mean_n_sampling_draws",
+                "mean_time_per_sampling_draw",
+                "mean_share_sampling_in_mcmc",
+                "mean_share_sampling_in_method",
+                "mean_share_estimation_in_method",
+                "mean_share_mcmc_in_method",
+            ]:
+                if col in row and pd.notna(row[col]):
+                    if "draws" in col:
+                        print(f"{col:<35} {int(row[col])}")
+                    else:
+                        print(f"{col:<35} {row[col]:.6f}")
 
 def main():
     parser = argparse.ArgumentParser()
 
-    # Input options
     parser.add_argument("--results-dir", type=str, default=None)
     parser.add_argument("--results-file", type=str, default=None)
     parser.add_argument("--pattern", type=str, default="*.csv")
     parser.add_argument("--true-tau", type=float, default=1.0)
 
-    # Save options
     parser.add_argument("--save", action="store_true", help="Save summary CSV. Default is print only.")
     parser.add_argument("--out", type=str, default=None, help="Exact output path. Used only with --save.")
-    parser.add_argument("--out-dir", type=str, default="summaries", help="Summary folder. Used with --save when --out is omitted.")
-    parser.add_argument("--out-prefix", type=str, default="summary", help="Prefix for auto-incremented summary filename.")
+    parser.add_argument("--out-dir", type=str, default="summaries")
+    parser.add_argument("--out-prefix", type=str, default="summary")
 
     args = parser.parse_args()
 
