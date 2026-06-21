@@ -1,0 +1,11 @@
+# Run constrained_1tok
+# Run from project root:
+#   .\scripts\run_constrained_1tok.ps1
+
+python run_matching_from_datasets.py `
+    --datasets datasets_sb01.npz `
+    --method constrained_1tok `
+    --n-mcmc 1000 `
+    --beta 1 `
+    --out-dir results `
+    --out-prefix constrained_1tok_beta1

@@ -1,0 +1,2 @@
+file,path,n_sim,method,beta,pstar,n_mcmc,dataset_file,mean_est,bias,abs_bias,empirical_var_est,mean_wiVar,mean_bwVar,mean_miVar,mean_wiVarpaired,mean_miVarpaired,coverage,mean_ci_length
+unconstrained_1to1_beta1_1.csv,results\unconstrained_1to1_beta1_1.csv,1000,unconstrained_1to1,1.0,0.5,1000,datasets_sb01.npz,1.0653965199512974,0.06539651995129736,0.18987345353362803,0.05106992825961795,0.0722664342222639,0.03565952941944962,0.10796162317113303,0.07168848464734165,0.1073836735962108,0.996,1.284631027682139
