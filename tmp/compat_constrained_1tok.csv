@@ -1,0 +1,2 @@
+acceptance_count,beta,bwVar,covers_true,dataset_file,est,est_med,ll,method,miVar,miVarclus,n_mcmc,pstar,result_file,sim,ul,wiVar,wiVarclus
+0,1.0,1.5407439555097887e-32,1,datasets_sb01.npz,0.8358807906674958,0.8358807906674959,0.4493075231141157,constrained_1tok,0.03890016950929226,0.20158234758430932,5,0.5,tmp\compat_constrained_1tok.csv,1,1.2224540582208758,0.03890016950929226,0.20158234758430932

@@ -185,6 +185,10 @@ def init_constrained_greedy(dist, k):
 def run_unconstrained_1to1(X, Y, g, n_mcmc, beta, rng, profile=False):
     timing = new_timer()
 
+    # -----------------------------
+    # Setup
+    # -----------------------------
+
     t0 = time.perf_counter()
     rc, dn = recipient_donor_indices(g)
     n_rc = len(rc)
@@ -198,7 +202,13 @@ def run_unconstrained_1to1(X, Y, g, n_mcmc, beta, rng, profile=False):
     p = beta
     alpha = (1 / (dist_df ** p))
     alpha = alpha / alpha.sum(axis=1, keepdims=True)
+    alpha_cdf = np.cumsum(alpha, axis=1)
+    alpha_cdf[:, -1] = 1.0
     timing["setup"] += time.perf_counter() - t0
+
+    # -----------------------------
+    # Allocation
+    # -----------------------------
 
     t0 = time.perf_counter()
     est = np.empty(n_mcmc)
@@ -209,11 +219,26 @@ def run_unconstrained_1to1(X, Y, g, n_mcmc, beta, rng, profile=False):
     Y_rc = Y[rc]
     timing["allocation"] += time.perf_counter() - t0
 
+    # -----------------------------
+    # MCMC
+    # -----------------------------
+
     for j in range(n_mcmc):
+
+        # ===== Sampling =====
+
         t0 = time.perf_counter()
-        match_cols = np.array([rng.choice(n_dn, p=alpha[r]) for r in range(n_rc)])
+        # 1) baseline 
+        # match_cols = np.array([rng.choice(n_dn, p=alpha[r]) for r in range(n_rc)])
+        # Y_match = Y[dn[match_cols]]
+
+        # 2) uniform distribution
+        u = rng.random(n_rc)
+        match_cols = (u[:, None] > alpha_cdf).sum(axis=1)
         Y_match = Y[dn[match_cols]]
         timing["mcmc_sampling"] += time.perf_counter() - t0
+
+        # ===== Estimation =====
 
         t0 = time.perf_counter()
         Y_oc = np.concatenate([Y_rc, Y_match])
@@ -224,6 +249,10 @@ def run_unconstrained_1to1(X, Y, g, n_mcmc, beta, rng, profile=False):
         varpaired[j] = np.var(Y_rc - Y_match, ddof=1) / len(Y_rc)
         timing["mcmc_estimation"] += time.perf_counter() - t0
     
+    # -----------------------------
+    # Summary
+    # -----------------------------
+
     t0 = time.perf_counter()
     est_bar, u_bar, b, t = mi_total_variance(est, var)
     _, u_paired, _, t_paired = mi_total_variance(est, varpaired)
@@ -262,7 +291,16 @@ def run_unconstrained_1to1(X, Y, g, n_mcmc, beta, rng, profile=False):
 
     return result
 
-def run_unconstrained_1tok(X, Y, g, n_mcmc, beta, rng, k=2, profile=False):
+def run_unconstrained_1tok(
+    X, Y, g, n_mcmc, beta, rng, k=2, profile=False
+):
+    timing = new_timer()
+
+    # -----------------------------
+    # Setup
+    # -----------------------------
+    t0 = time.perf_counter()
+
     rc, dn = recipient_donor_indices(g)
     n_rc = len(rc)
     n_dn = len(dn)
@@ -275,7 +313,22 @@ def run_unconstrained_1tok(X, Y, g, n_mcmc, beta, rng, k=2, profile=False):
     alpha = (1 / (dist_df ** p))
     alpha = alpha / alpha.sum(axis=1, keepdims=True)
 
-    C_acc = init_unconstrained_k_nearest(dist, k)
+    if not 1 <= k < n_dn:
+        raise ValueError("k must be at least 1 and smaller than the number of donors.")
+
+    # Each row is a mutable donor ordering for one recipient.
+    # donor_order[r, :k] are currently matched donors.
+    # donor_order[r, k:] are currently unmatched donors.
+    # A proposed update samples one position from each block and swaps them
+    # in place when accepted, avoiding repeated construction of S0 and S1.
+    donor_order = np.argsort(dist, axis=1)
+
+    timing["setup"] += time.perf_counter() - t0
+
+    # -----------------------------
+    # Allocation
+    # -----------------------------
+    t0 = time.perf_counter()
 
     est = np.empty(n_mcmc)
     estdiff = np.empty(n_mcmc)
@@ -284,62 +337,88 @@ def run_unconstrained_1tok(X, Y, g, n_mcmc, beta, rng, k=2, profile=False):
     tr = np.zeros(n_mcmc, dtype=bool)
 
     Y_rc = Y[rc]
-    Y1 = np.empty(n_rc)
-    Y2 = np.empty(n_rc)
+    Y_matches = np.empty((n_rc, k))
+    g_oc = np.concatenate([np.ones(n_rc), np.zeros(k * n_rc)])
+    match_weights = np.full(n_rc * k, 1 / k)
 
+    timing["allocation"] += time.perf_counter() - t0
+
+    # -----------------------------
+    # MCMC
+    # -----------------------------
     for j in range(n_mcmc):
         accepted_any = False
 
+        # ===== Sampling =====
+        t0 = time.perf_counter()
+
         for r in range(n_rc):
-            Cr = C_acc[r].copy()
-            S0 = np.where(Cr == 0)[0]
-            S1 = np.where(Cr == 1)[0]
-
-            x0 = rng.choice(S0)
-            x1 = rng.choice(S1)
-
-            Cr_prop = Cr.copy()
-            Cr_prop[x1] = 0
-            Cr_prop[x0] = 1
+            # Pick one selected donor to remove and one unselected donor to add.
+            # The sampled values are donor-column indices; the sampled positions
+            # let us mutate donor_order directly if the proposal is accepted.
+            remove_pos = rng.integers(k)
+            add_pos = rng.integers(k, n_dn)
+            x1 = donor_order[r, remove_pos]
+            x0 = donor_order[r, add_pos]
 
             prob_x1 = alpha[r, x1]
             prob_x0 = alpha[r, x0]
+
             w0 = prob_x0 / (1 - prob_x0)
             w1 = prob_x1 / (1 - prob_x1)
 
             logratio = np.log(w0 / w1)
             logr = min(0.0, logratio)
+
             if np.log(rng.random()) < logr:
-                C_acc[r] = Cr_prop
+                donor_order[r, remove_pos] = x0
+                donor_order[r, add_pos] = x1
                 accepted_any = True
 
-            match_cols = np.where(C_acc[r] == 1)[0]
-            Y1[r] = Y[dn[match_cols[0]]]
-            Y2[r] = Y[dn[match_cols[1]]]
+            Y_matches[r, :] = Y[dn[donor_order[r, :k]]]
+
+        timing["mcmc_sampling"] += time.perf_counter() - t0
 
         tr[j] = accepted_any
 
-        Y_match = np.concatenate([Y1, Y2])
-        Y_oc = np.concatenate([Y_rc, Y1, Y2])
-        g_oc = np.concatenate([np.ones(n_rc), np.zeros(k * n_rc)])
-        weights = np.concatenate([np.ones(n_rc), np.full(len(Y1), 1 / k), np.full(len(Y2), 1 / k)])
+        # ===== Estimation =====
+        t0 = time.perf_counter()
 
-        # R computes reg but then uses unweighted lm for est.cl/var.cl.
-        # Keep that behavior.
+        Y_match = Y_matches.ravel()
+        Y_oc = np.concatenate([Y_rc, Y_match])
+
         est[j], var[j] = lm_slope_variance(Y_oc, g_oc)
-        estdiff[j] = Y_rc.mean() - np.average(Y_match, weights=np.full(len(Y_match), 1 / k))
 
-        # This line is dimensionally odd in the R code for k=2, because Y.match has length 2*n_rc.
-        # We keep a safe approximation: compare each treated outcome to the average of its two matched donors.
-        pair_avg = (Y1 + Y2) / 2
-        varpaired[j] = np.var(Y_rc - pair_avg, ddof=1) / len(Y_rc)
+        estdiff[j] = (
+            Y_rc.mean()
+            - np.average(
+                Y_match,
+                weights=match_weights
+            )
+        )
+
+        pair_avg = Y_matches.mean(axis=1)
+        varpaired[j] = (
+            np.var(Y_rc - pair_avg, ddof=1)
+            / len(Y_rc)
+        )
+
+        timing["mcmc_estimation"] += time.perf_counter() - t0
+
+    # -----------------------------
+    # Summary
+    # -----------------------------
+    t0 = time.perf_counter()
 
     est_bar, u_bar, b, t = mi_total_variance(est, var)
     _, u_paired, _, t_paired = mi_total_variance(est, varpaired)
 
-    return {
+    timing["summary"] += time.perf_counter() - t0
+
+    result = {
         "est": est_bar,
         "est_med": float(np.median(est)),
+        "k": k,
         "wiVar": u_bar,
         "bwVar": b,
         "miVar": t,
@@ -348,6 +427,217 @@ def run_unconstrained_1tok(X, Y, g, n_mcmc, beta, rng, k=2, profile=False):
         "estdiff": float(estdiff.mean()),
         "acceptance_count": int(tr.sum()),
     }
+
+    if profile:
+        sampling_time = timing["mcmc_sampling"]
+        estimation_time = timing["mcmc_estimation"]
+        mcmc_time = sampling_time + estimation_time
+        method_time = sum(timing.values())
+
+        result.update({f"time_{k}": v for k, v in timing.items()})
+
+        result["time_mcmc_total"] = mcmc_time
+        result["time_method_total"] = method_time
+
+        # Here a "sampling draw" means one recipient update.
+        result["n_sampling_draws"] = int(n_mcmc * n_rc)
+        result["time_per_sampling_draw"] = (
+            sampling_time / result["n_sampling_draws"]
+        )
+
+        result["share_sampling_in_mcmc"] = (
+            sampling_time / mcmc_time
+        )
+        result["share_sampling_in_method"] = (
+            sampling_time / method_time
+        )
+        result["share_estimation_in_method"] = (
+            estimation_time / method_time
+        )
+        result["share_mcmc_in_method"] = (
+            mcmc_time / method_time
+        )
+
+    return result
+
+
+def run_unconstrained_1tok_mc(
+    X, Y, g, n_mcmc, beta, rng, k=2, profile=False
+):
+    timing = new_timer()
+
+    # -----------------------------
+    # Setup
+    # -----------------------------
+    t0 = time.perf_counter()
+
+    rc, dn = recipient_donor_indices(g)
+    n_rc = len(rc)
+    n_dn = len(dn)
+
+    dist = distance_matrix(X, g, 2)
+    offset = dist.min(axis=1)
+    dist_df = dist + offset[:, None]
+
+    p = beta
+    alpha = (1 / (dist_df ** p))
+    alpha = alpha / alpha.sum(axis=1, keepdims=True)
+
+    if not 1 <= k < n_dn:
+        raise ValueError("k must be at least 1 and smaller than the number of donors.")
+
+    # Under alpha_prime = 1 - alpha, the collapsed conditional Bernoulli
+    # row weights are r_ij = alpha_ij / (1 - alpha_ij).
+    row_weights = alpha / (1 - alpha)
+
+    # Build the dynamic-programming table once for this simulation replication.
+    # dp[r, j, kk] is the total product weight over all subsets of size kk
+    # available from donor positions j, j + 1, ..., n_dn - 1 for recipient r.
+    dp = np.zeros((n_rc, n_dn + 1, k + 1))
+    dp[:, :, 0] = 1.0
+
+    for donor_pos in range(n_dn - 1, -1, -1):
+        for kk in range(1, k + 1):
+            dp[:, donor_pos, kk] = (
+                dp[:, donor_pos + 1, kk]
+                + row_weights[:, donor_pos] * dp[:, donor_pos + 1, kk - 1]
+            )
+
+    timing["setup"] += time.perf_counter() - t0
+
+    # -----------------------------
+    # Allocation
+    # -----------------------------
+    t0 = time.perf_counter()
+
+    est = np.empty(n_mcmc)
+    estdiff = np.empty(n_mcmc)
+    var = np.empty(n_mcmc)
+    varpaired = np.empty(n_mcmc)
+
+    Y_rc = Y[rc]
+    Y_matches = np.empty((n_rc, k))
+    match_cols = np.empty((n_rc, k), dtype=int)
+    g_oc = np.concatenate([np.ones(n_rc), np.zeros(k * n_rc)])
+    match_weights = np.full(n_rc * k, 1 / k)
+
+    timing["allocation"] += time.perf_counter() - t0
+
+    # -----------------------------
+    # Monte Carlo Sampling
+    # -----------------------------
+    for j in range(n_mcmc):
+
+        # ===== Sampling =====
+        t0 = time.perf_counter()
+
+        for r in range(n_rc):
+            remaining = k
+            selected = 0
+
+            # Scan donors left to right. Conditional on the current remaining
+            # cardinality, include donor j with probability
+            # r_ij * E[j + 1, remaining - 1] / E[j, remaining].
+            for donor_pos in range(n_dn):
+                if remaining == 0:
+                    break
+
+                denom = dp[r, donor_pos, remaining]
+                numer = (
+                    row_weights[r, donor_pos]
+                    * dp[r, donor_pos + 1, remaining - 1]
+                )
+                include_prob = numer / denom
+
+                if rng.random() < include_prob:
+                    match_cols[r, selected] = donor_pos
+                    selected += 1
+                    remaining -= 1
+
+            if remaining != 0:
+                raise RuntimeError("Monte Carlo row sampler failed to select k donors.")
+
+            Y_matches[r, :] = Y[dn[match_cols[r, :]]]
+
+        timing["mcmc_sampling"] += time.perf_counter() - t0
+
+        # ===== Estimation =====
+        t0 = time.perf_counter()
+
+        Y_match = Y_matches.ravel()
+        Y_oc = np.concatenate([Y_rc, Y_match])
+
+        est[j], var[j] = lm_slope_variance(Y_oc, g_oc)
+
+        estdiff[j] = (
+            Y_rc.mean()
+            - np.average(
+                Y_match,
+                weights=match_weights
+            )
+        )
+
+        pair_avg = Y_matches.mean(axis=1)
+        varpaired[j] = (
+            np.var(Y_rc - pair_avg, ddof=1)
+            / len(Y_rc)
+        )
+
+        timing["mcmc_estimation"] += time.perf_counter() - t0
+
+    # -----------------------------
+    # Summary
+    # -----------------------------
+    t0 = time.perf_counter()
+
+    est_bar, u_bar, b, t = mi_total_variance(est, var)
+    _, u_paired, _, t_paired = mi_total_variance(est, varpaired)
+
+    timing["summary"] += time.perf_counter() - t0
+
+    result = {
+        "est": est_bar,
+        "est_med": float(np.median(est)),
+        "k": k,
+        "wiVar": u_bar,
+        "bwVar": b,
+        "miVar": t,
+        "wiVarpaired": u_paired,
+        "miVarpaired": t_paired,
+        "estdiff": float(estdiff.mean()),
+    }
+
+    if profile:
+        sampling_time = timing["mcmc_sampling"]
+        estimation_time = timing["mcmc_estimation"]
+        mcmc_time = sampling_time + estimation_time
+        method_time = sum(timing.values())
+
+        result.update({f"time_{k}": v for k, v in timing.items()})
+
+        result["time_mcmc_total"] = mcmc_time
+        result["time_method_total"] = method_time
+
+        # Here a "sampling draw" means one recipient row sampled directly.
+        result["n_sampling_draws"] = int(n_mcmc * n_rc)
+        result["time_per_sampling_draw"] = (
+            sampling_time / result["n_sampling_draws"]
+        )
+
+        result["share_sampling_in_mcmc"] = (
+            sampling_time / mcmc_time
+        )
+        result["share_sampling_in_method"] = (
+            sampling_time / method_time
+        )
+        result["share_estimation_in_method"] = (
+            estimation_time / method_time
+        )
+        result["share_mcmc_in_method"] = (
+            mcmc_time / method_time
+        )
+
+    return result
 
 
 def run_constrained_1to1(X, Y, g, n_mcmc, beta, pstar, rng, profile=False):
@@ -536,6 +826,7 @@ def run_constrained_1tok(X, Y, g, n_mcmc, beta, pstar, rng, k=2, profile=False):
 METHODS = {
     "unconstrained_1to1": run_unconstrained_1to1,
     "unconstrained_1tok": run_unconstrained_1tok,
+    "unconstrained_1tok_mc": run_unconstrained_1tok_mc,
     "constrained_1to1": run_constrained_1to1,
     "constrained_1tok": run_constrained_1tok,
 }
@@ -573,6 +864,7 @@ def main():
     parser.add_argument("--method", type=str, required=True, choices=METHODS.keys())
     parser.add_argument("--n-mcmc", type=int, default=100000)
     parser.add_argument("--beta", type=float, default=1.0)
+    parser.add_argument("--k", type=int, default=2, help="Number of donors per recipient for 1-to-k methods")
     parser.add_argument("--pstar", type=float, default=0.5)
     parser.add_argument("--max-sim", type=int, default=None, help="Run only first max-sim datasets")
     parser.add_argument("--true-tau", type=float, default=1.0)
@@ -624,6 +916,15 @@ def main():
                 args.beta,
                 args.pstar,
                 rng,
+                profile=args.profile,
+            )
+        elif args.method in {"unconstrained_1tok", "unconstrained_1tok_mc"}:
+            result = method_func(
+                X, Y, g,
+                args.n_mcmc,
+                args.beta,
+                rng,
+                k=args.k,
                 profile=args.profile,
             )
         else:

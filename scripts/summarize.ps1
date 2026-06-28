@@ -1,6 +1,6 @@
 # Summarize result CSV files.
 # Run from project root:
-#   powershell -ExecutionPolicy Bypass -File .\scripts\summarize.ps1
+#   .\scripts\summarize.ps1
 #
 # Default behavior:
 #   - Summarizes files matching $Pattern in $ResultsDir
@@ -20,8 +20,8 @@
 
 $ResultsDir = "results"
 $ResultsFile = ""   # Example: "results/unconstrained_1to1_beta1_2.csv"
-# $Pattern = "unconstrained_1to1_beta1*.csv"
-$Pattern = "unconstrained_1to1_beta1_profile*.csv"
+$Pattern = "unconstrained_1tok_beta1*.csv"
+# $Pattern = "unconstrained_1to1_beta1_profile*.csv"
 $TrueTau = 1
 
 $SaveSummary = $false
