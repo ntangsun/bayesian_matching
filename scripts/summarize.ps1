@@ -12,7 +12,7 @@
 #
 # To summarize files by pattern, set:
 #   $ResultsFile = ""
-#   $Pattern = "unconstrained_1to1_beta1*.csv"
+#   $Pattern = "unconstrained_1to1_beta1*.csv".\scripts\summarize.ps1
 #
 # To save with incrementing title, set:
 #   $SaveSummary = $true
@@ -20,8 +20,9 @@
 
 $ResultsDir = "results"
 $ResultsFile = ""   # Example: "results/unconstrained_1to1_beta1_2.csv"
-$Pattern = "unconstrained_1tok_beta1*.csv"
-# $Pattern = "unconstrained_1to1_beta1_profile*.csv"
+# $Pattern = "unconstrained_1tok_beta1*.csv"
+$Pattern = "constrained_1to1_*_profile*.csv"
+# $Pattern = "unconstrained_1to1_*_profile*.csv"
 $TrueTau = 1
 
 $SaveSummary = $false
