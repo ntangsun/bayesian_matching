@@ -21,7 +21,7 @@
 $ResultsDir = "results"
 $ResultsFile = ""   # Example: "results/unconstrained_1to1_beta1_2.csv"
 # $Pattern = "unconstrained_1tok_beta1*.csv"
-$Pattern = "constrained_1to1_*_profile*.csv"
+$Pattern = "constrained_1tok_*_profile*.csv"
 # $Pattern = "unconstrained_1to1_*_profile*.csv"
 $TrueTau = 1
 

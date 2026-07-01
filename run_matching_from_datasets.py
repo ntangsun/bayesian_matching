@@ -935,12 +935,33 @@ def run_constrained_1to1_gibbs(X, Y, g, n_mcmc, beta, pstar, rng, profile=False)
 
 
 def run_constrained_1tok(X, Y, g, n_mcmc, beta, pstar, rng, k=2, profile=False):
+    timing = new_timer()
+
+    # -----------------------------
+    # Setup
+    # -----------------------------
+    t0 = time.perf_counter()
+
     rc, dn = recipient_donor_indices(g)
     n_rc = len(rc)
     n_dn = len(dn)
 
+    if k < 1 or n_rc * k > n_dn:
+        raise ValueError("constrained 1-to-k matching requires k >= 1 and n_rc * k <= n_dn.")
+
     dist = distance_matrix(X, g, 2)
     C_acc = init_constrained_greedy(dist, k=k)
+    match_cols = np.array([np.where(C_acc[s] == 1)[0] for s in range(n_rc)])
+    unmatched_donors = np.where(C_acc.sum(axis=0) == 0)[0]
+
+    const = beta
+
+    timing["setup"] += time.perf_counter() - t0
+
+    # -----------------------------
+    # Allocation
+    # -----------------------------
+    t0 = time.perf_counter()
 
     est = np.empty(n_mcmc)
     var = np.empty(n_mcmc)
@@ -948,75 +969,92 @@ def run_constrained_1tok(X, Y, g, n_mcmc, beta, pstar, rng, k=2, profile=False):
     tr = np.zeros(n_mcmc, dtype=bool)
 
     Y_rc = Y[rc]
-    Y1 = np.empty(n_rc)
-    Y2 = np.empty(n_rc)
+    Y_matches = np.empty((n_rc, k))
+    g_oc = np.concatenate([np.ones(n_rc), np.zeros(k * n_rc)])
+    weights = np.concatenate([np.ones(n_rc), np.full(k * n_rc, 1 / k)])
+    subclass = np.concatenate([np.arange(n_rc), np.repeat(np.arange(n_rc), k)])
 
-    const = beta
+    timing["allocation"] += time.perf_counter() - t0
 
+    # -----------------------------
+    # MCMC
+    # -----------------------------
     for j in range(n_mcmc):
+
+        # ===== Sampling =====
+        t0 = time.perf_counter()
+
         flag = rng.choice([1, 2], p=[pstar, 1 - pstar])
 
-        collist = np.where(C_acc.sum(axis=0) == 0)[0]
-        C_pr = C_acc.copy()
-
         if flag == 1:
-            rc_new = rng.choice(n_rc, size=2, replace=False)
+            row1 = rng.integers(n_rc)
+            row2 = rng.integers(n_rc - 1)
+            if row2 >= row1:
+                row2 += 1
 
-            rc_matches1 = np.where(C_acc[rc_new[0]] == 1)[0]
-            rc_matches2 = np.where(C_acc[rc_new[1]] == 1)[0]
+            slot1 = rng.integers(k)
+            slot2 = rng.integers(k)
+            old1 = match_cols[row1, slot1]
+            old2 = match_cols[row2, slot2]
 
-            chosen = np.array([rng.choice(rc_matches1), rng.choice(rc_matches2)])
-
-            C_pr[rc_new[0], chosen[1]] = 1
-            C_pr[rc_new[0], chosen[0]] = 0
-            C_pr[rc_new[1], chosen[0]] = 1
-            C_pr[rc_new[1], chosen[1]] = 0
-
-            loglik_nr = -const * (dist[rc_new[0], chosen[1]] + dist[rc_new[1], chosen[0]])
-            loglik_dr = -const * (dist[rc_new[0], chosen[0]] + dist[rc_new[1], chosen[1]])
+            loglik_nr = -const * (dist[row1, old2] + dist[row2, old1])
+            loglik_dr = -const * (dist[row1, old1] + dist[row2, old2])
 
         else:
-            if len(collist) == 0:
+            if len(unmatched_donors) == 0:
                 loglik_nr = -np.inf
                 loglik_dr = 0.0
             else:
-                dn_new = rng.choice(collist)
+                unmatched_pos = rng.integers(len(unmatched_donors))
+                dn_new = unmatched_donors[unmatched_pos]
                 rc_new = rng.integers(0, n_rc)
-                rc_matches = np.where(C_acc[rc_new] == 1)[0]
-                chosen = rng.choice(rc_matches)
-
-                C_pr[rc_new, chosen] = 0
-                C_pr[rc_new, dn_new] = 1
+                slot = rng.integers(k)
+                old = match_cols[rc_new, slot]
 
                 loglik_nr = -const * dist[rc_new, dn_new]
-                loglik_dr = -const * dist[rc_new, chosen]
+                loglik_dr = -const * dist[rc_new, old]
 
         loglik_ratio = loglik_nr - loglik_dr
         logr = min(0.0, loglik_ratio)
         if np.log(rng.random()) < logr:
-            C_acc = C_pr
+            if flag == 1:
+                match_cols[row1, slot1] = old2
+                match_cols[row2, slot2] = old1
+            else:
+                if len(unmatched_donors) > 0:
+                    match_cols[rc_new, slot] = dn_new
+                    unmatched_donors[unmatched_pos] = old
             tr[j] = True
 
-        index_match = np.array([np.where(C_acc[s] == 1)[0] for s in range(n_rc)])
+        timing["mcmc_sampling"] += time.perf_counter() - t0
 
-        for recv in range(n_rc):
-            Y1[recv] = Y[dn[index_match[recv, 0]]]
-            Y2[recv] = Y[dn[index_match[recv, 1]]]
+        # ===== Estimation =====
+        t0 = time.perf_counter()
 
-        Y_oc = np.concatenate([Y_rc, Y1, Y2])
-        g_oc = np.concatenate([np.ones(n_rc), np.zeros(k * n_rc)])
-        weights = np.concatenate([np.ones(n_rc), np.full(len(Y1), 1 / k), np.full(len(Y2), 1 / k)])
-        subclass = np.concatenate([np.arange(n_rc), np.arange(n_rc), np.arange(n_rc)])
+        index_match = match_cols
+
+        Y_matches[:, :] = Y[dn[index_match]]
+        Y_match = Y_matches.ravel()
+        Y_oc = np.concatenate([Y_rc, Y_match])
 
         est[j], var[j] = wls_slope_variance(Y_oc, g_oc, weights)
 
         # R code calls unweighted lm inside coeftest even though reg is weighted.
         varclus[j] = cluster_se_for_slope(Y_oc, g_oc, subclass)
 
+        timing["mcmc_estimation"] += time.perf_counter() - t0
+
+    # -----------------------------
+    # Summary
+    # -----------------------------
+    t0 = time.perf_counter()
+
     est_bar, u_bar, b, t = mi_total_variance(est, var)
     _, u_clus, _, t_clus = mi_total_variance(est, varclus)
 
-    return {
+    timing["summary"] += time.perf_counter() - t0
+
+    result = {
         "est": est_bar,
         "est_med": float(np.median(est)),
         "wiVar": u_bar,
@@ -1026,6 +1064,28 @@ def run_constrained_1tok(X, Y, g, n_mcmc, beta, pstar, rng, k=2, profile=False):
         "miVarclus": t_clus,
         "acceptance_count": int(tr.sum()),
     }
+
+    if profile:
+        sampling_time = timing["mcmc_sampling"]
+        estimation_time = timing["mcmc_estimation"]
+        mcmc_time = sampling_time + estimation_time
+        method_time = sum(timing.values())
+
+        result.update({f"time_{k}": v for k, v in timing.items()})
+
+        result["time_mcmc_total"] = mcmc_time
+        result["time_method_total"] = method_time
+
+        # Here a "sampling draw" means one full constrained proposal update.
+        result["n_sampling_draws"] = int(n_mcmc)
+        result["time_per_sampling_draw"] = sampling_time / result["n_sampling_draws"]
+
+        result["share_sampling_in_mcmc"] = sampling_time / mcmc_time
+        result["share_sampling_in_method"] = sampling_time / method_time
+        result["share_estimation_in_method"] = estimation_time / method_time
+        result["share_mcmc_in_method"] = mcmc_time / method_time
+
+    return result
 
 
 METHODS = {
