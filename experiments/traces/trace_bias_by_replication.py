@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-trace_bias_by_replication.py
+experiments/traces/trace_bias_by_replication.py
 
 Estimate how simulation bias stabilizes as the number of replications grows.
 
@@ -11,15 +11,20 @@ updates the running average across replications. The plot answers:
     How many simulation replications do we need before estimated bias stabilizes?
 
 Example:
-    python trace_bias_by_replication.py --datasets datasets_sb01_10000.npz
+    python experiments/traces/trace_bias_by_replication.py --datasets datasets_sb01_10000.npz
 """
 
 import argparse
 import csv
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from run_matching_from_datasets import (
     distance_matrix,

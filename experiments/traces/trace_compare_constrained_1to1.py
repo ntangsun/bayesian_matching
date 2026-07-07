@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 r"""
-python trace_compare_constrained_1to1.py `
+python experiments/traces/trace_compare_constrained_1to1.py `
     --datasets datasets_sb01.npz `
     --sim-index 1 `
     --n-mcmc 10000 `
@@ -11,7 +11,7 @@ python trace_compare_constrained_1to1.py `
     --out-comparison results\constrained_1to1_mcmc_vs_gibbs_comparison.csv `
     --out-plot results\constrained_1to1_mcmc_vs_gibbs.png
 
-trace_compare_constrained_1to1.py
+experiments/traces/trace_compare_constrained_1to1.py
 
 Compare the Metropolis constrained 1-to-1 sampler with the Gibbs constrained
 1-to-1 sampler on one fixed dataset replication.
@@ -22,7 +22,7 @@ differences. This checks whether the two samplers appear to target the same
 matching distribution for that dataset.
 
 Example:
-    python trace_compare_constrained_1to1.py `
+    python experiments/traces/trace_compare_constrained_1to1.py `
         --datasets datasets_sb01.npz `
         --sim-index 1 `
         --n-mcmc 10000 `
@@ -33,10 +33,15 @@ Example:
 
 import argparse
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from run_matching_from_datasets import (
     distance_matrix,

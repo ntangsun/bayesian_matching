@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-trace_bias_by_sample_size.py
+experiments/traces/trace_bias_by_sample_size.py
 
 Study whether the finite-sample bias of Bayesian unconstrained 1-to-k matching
 decreases as the dataset size N increases.
@@ -9,17 +9,22 @@ The script generates fresh datasets for each sample size, estimates tau within
 each replication, then summarizes Monte Carlo bias separately for each N.
 
 Pilot example:
-    python trace_bias_by_sample_size.py --betas 1
+    python experiments/traces/trace_bias_by_sample_size.py --betas 1
 """
 
 import argparse
 import csv
 import math
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from run_matching_from_datasets import (
     distance_matrix,

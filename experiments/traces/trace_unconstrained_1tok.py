@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
-python trace_bias_by_replication.py `
-    --datasets datasets_sb01_10000.npz `
-    --n-mcmc 500 `
-    --print-every 100 `
-    --flush-every 100 `
-    --out-csv results\unconstrained_1tok_bias_by_replication_10000.csv `
-    --out-plot results\unconstrained_1tok_bias_by_replication_10000.png
+python experiments/traces/trace_unconstrained_1tok.py `
+    --datasets datasets_sb01.npz `
+    --n-mcmc 1000 `
+    --checkpoint-every 100 `    --print-every 10 `
+    --out-detail results/unconstrained_1tok_tau_trace_by_sim.csv `\n    --out-summary results/unconstrained_1tok_tau_trace_summary.csv `\n    --out-plot results/unconstrained_1tok_tau_trace.png
     
-trace_unconstrained_1tok.py
+experiments/traces/trace_unconstrained_1tok.py
 
 Track how the estimated treatment effect evolves as a function of the number
 of MCMC imputations for unconstrained 1-to-k Bayesian matching.
@@ -19,15 +17,20 @@ snapshots. After all replications finish, it averages matching checkpoints
 across replications and makes a convergence plot.
 
 Example:
-    python trace_unconstrained_1tok.py --datasets datasets_sb01.npz
+    python experiments/traces/trace_unconstrained_1tok.py --datasets datasets_sb01.npz
 """
 
 import argparse
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from run_matching_from_datasets import (
     distance_matrix,

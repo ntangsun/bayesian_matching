@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python trace_constrained_1to1.py `
+python experiments/traces/trace_constrained_1to1.py `
     --datasets datasets_sb01.npz `
     --sim-index 1 `
     --n-mcmc 10000 `
@@ -10,7 +10,7 @@ python trace_constrained_1to1.py `
     --out-csv results\constrained_1to1_fixed_rep_trace.csv `
     --out-plot results\constrained_1to1_fixed_rep_trace.png
 
-trace_constrained_1to1.py
+experiments/traces/trace_constrained_1to1.py
 
 Trace one constrained 1-to-1 Bayesian matching Markov chain on one fixed
 dataset replication.
@@ -21,15 +21,20 @@ constrained 1-to-1 proposal logic as run_matching_from_datasets.py, and records
 checkpoint snapshots of the running tau estimate.
 
 Example:
-    python trace_constrained_1to1.py --datasets datasets_sb01.npz --sim-index 1
+    python experiments/traces/trace_constrained_1to1.py --datasets datasets_sb01.npz --sim-index 1
 """
 
 import argparse
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from run_matching_from_datasets import (
     distance_matrix,

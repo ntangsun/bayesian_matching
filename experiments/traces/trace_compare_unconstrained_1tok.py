@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""
 
-python trace_compare_unconstrained_1tok.py `
+python experiments/traces/trace_compare_unconstrained_1tok.py `
     --datasets datasets_sb01.npz `
     --n-mcmc 5000 `
     --checkpoint-every 250 `
@@ -10,7 +10,7 @@ python trace_compare_unconstrained_1tok.py `
     --out-summary results\unconstrained_1tok_mcmc_vs_mc_trace_summary.csv `
     --out-plot results\unconstrained_1tok_mcmc_vs_mc_trace.png
 
-trace_compare_unconstrained_1tok.py
+experiments/traces/trace_compare_unconstrained_1tok.py
 
 Compare the original Metropolis row-swap sampler with the direct Monte Carlo
 dynamic-programming sampler for unconstrained 1-to-k Bayesian matching.
@@ -22,15 +22,20 @@ their running tau summaries should approach each other as the number of
 imputations grows.
 
 Example:
-    python trace_compare_unconstrained_1tok.py --datasets datasets_sb01.npz --max-sim 100
+    python experiments/traces/trace_compare_unconstrained_1tok.py --datasets datasets_sb01.npz --max-sim 100
 """
 
 import argparse
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from run_matching_from_datasets import (
     distance_matrix,
