@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-beta_regularization_path_replications.py
+experiments/beta_regularization_path_replications.py
 
-python beta_regularization_path_replications.py `
+python experiments/beta_regularization_path_replications.py `
     --n 300 `
     --out-detail results/beta_regularization_path_replications_N300_detail.csv `
     --out-summary results/beta_regularization_path_replications_N300_summary.csv `
     --out-plot results/beta_regularization_path_replications_N300.png
 
-python beta_regularization_path_replications.py `
+python experiments/beta_regularization_path_replications.py `
     --n 300 `
     --n-reps 5 `
     --individual-reps 5 `
@@ -30,9 +30,14 @@ import argparse
 import csv
 import math
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from run_matching_from_datasets import (
     distance_matrix,
