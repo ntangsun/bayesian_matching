@@ -321,8 +321,16 @@ def main():
     parser.add_argument("--recipient-frac", type=float, default=0.3)
     parser.add_argument("--seed", type=int, default=12345)
     parser.add_argument("--true-tau", type=float, default=1.0)
-    parser.add_argument("--out-csv", type=str, default="results/bias_by_sample_size.csv")
-    parser.add_argument("--out-plot", type=str, default="results/bias_by_sample_size.png")
+    parser.add_argument(
+        "--out-csv",
+        type=str,
+        default="results/experiments/bias_by_sample_size/bias_by_sample_size.csv",
+    )
+    parser.add_argument(
+        "--out-plot",
+        type=str,
+        default="results/experiments/bias_by_sample_size/bias_by_sample_size.png",
+    )
     parser.add_argument("--log-x", action="store_true", help="Use log scale for sample-size axis")
     args = parser.parse_args()
 

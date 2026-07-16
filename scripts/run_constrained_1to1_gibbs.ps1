@@ -8,7 +8,7 @@ python run_matching_from_datasets.py `
     --n-mcmc 1000 `
     --beta 1 `
     --max-sim 100 `
-    --out-dir results `
+    --out-dir results/matching/constrained_1to1_gibbs `
     --out-prefix constrained_1to1_gibbs_beta1_profile `
     --profile
 
@@ -17,5 +17,6 @@ python run_matching_from_datasets.py `
 #     --method constrained_1to1_gibbs `
 #     --n-mcmc 1000 `
 #     --beta 1 `
-#     --out-dir results `
+#     --out-dir results/matching/constrained_1to1_gibbs `
+
 #     --out-prefix constrained_1to1_gibbs_beta1

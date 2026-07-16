@@ -164,8 +164,16 @@ def main():
     parser.add_argument("--max-sim", type=int, default=None, help="Optional smoke-test limit; default uses all replications")
     parser.add_argument("--print-every", type=int, default=100)
     parser.add_argument("--flush-every", type=int, default=100)
-    parser.add_argument("--out-csv", type=str, default="results/unconstrained_1tok_bias_by_replication.csv")
-    parser.add_argument("--out-plot", type=str, default="results/unconstrained_1tok_bias_by_replication.png")
+    parser.add_argument(
+        "--out-csv",
+        type=str,
+        default="results/experiments/bias_by_replication/unconstrained_1tok_bias_by_replication.csv",
+    )
+    parser.add_argument(
+        "--out-plot",
+        type=str,
+        default="results/experiments/bias_by_replication/unconstrained_1tok_bias_by_replication.png",
+    )
     args = parser.parse_args()
 
     data = np.load(args.datasets)

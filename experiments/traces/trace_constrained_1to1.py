@@ -7,8 +7,8 @@ python experiments/traces/trace_constrained_1to1.py `
     --checkpoint-every 100 `
     --beta 1 `
     --pstar 0.5 `
-    --out-csv results\constrained_1to1_fixed_rep_trace.csv `
-    --out-plot results\constrained_1to1_fixed_rep_trace.png
+    --out-csv results\experiments\fixed_rep_traces\constrained_1to1\constrained_1to1_fixed_rep_trace.csv `
+    --out-plot results\experiments\fixed_rep_traces\constrained_1to1\constrained_1to1_fixed_rep_trace.png
 
 experiments/traces/trace_constrained_1to1.py
 
@@ -223,12 +223,12 @@ def main():
     parser.add_argument(
         "--out-csv",
         type=str,
-        default="results/constrained_1to1_fixed_rep_trace.csv",
+        default="results/experiments/fixed_rep_traces/constrained_1to1/constrained_1to1_fixed_rep_trace.csv",
     )
     parser.add_argument(
         "--out-plot",
         type=str,
-        default="results/constrained_1to1_fixed_rep_trace.png",
+        default="results/experiments/fixed_rep_traces/constrained_1to1/constrained_1to1_fixed_rep_trace.png",
     )
     args = parser.parse_args()
 

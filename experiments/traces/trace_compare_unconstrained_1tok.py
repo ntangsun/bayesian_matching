@@ -6,9 +6,9 @@ python experiments/traces/trace_compare_unconstrained_1tok.py `
     --n-mcmc 5000 `
     --checkpoint-every 250 `
     --max-sim 100 `
-    --out-detail results\unconstrained_1tok_mcmc_vs_mc_trace_by_sim.csv `
-    --out-summary results\unconstrained_1tok_mcmc_vs_mc_trace_summary.csv `
-    --out-plot results\unconstrained_1tok_mcmc_vs_mc_trace.png
+    --out-detail results\experiments\mcmc_vs_mc\unconstrained_1tok_mcmc_vs_mc_trace_by_sim.csv `
+    --out-summary results\experiments\mcmc_vs_mc\unconstrained_1tok_mcmc_vs_mc_trace_summary.csv `
+    --out-plot results\experiments\mcmc_vs_mc\unconstrained_1tok_mcmc_vs_mc_trace.png
 
 experiments/traces/trace_compare_unconstrained_1tok.py
 
@@ -345,22 +345,22 @@ def main():
     parser.add_argument(
         "--out-detail",
         type=str,
-        default="results/unconstrained_1tok_mcmc_vs_mc_trace_by_sim.csv",
+        default="results/experiments/mcmc_vs_mc/unconstrained_1tok_mcmc_vs_mc_trace_by_sim.csv",
     )
     parser.add_argument(
         "--out-summary",
         type=str,
-        default="results/unconstrained_1tok_mcmc_vs_mc_trace_summary.csv",
+        default="results/experiments/mcmc_vs_mc/unconstrained_1tok_mcmc_vs_mc_trace_summary.csv",
     )
     parser.add_argument(
         "--out-comparison",
         type=str,
-        default="results/unconstrained_1tok_mcmc_vs_mc_trace_comparison.csv",
+        default="results/experiments/mcmc_vs_mc/unconstrained_1tok_mcmc_vs_mc_trace_comparison.csv",
     )
     parser.add_argument(
         "--out-plot",
         type=str,
-        default="results/unconstrained_1tok_mcmc_vs_mc_trace.png",
+        default="results/experiments/mcmc_vs_mc/unconstrained_1tok_mcmc_vs_mc_trace.png",
     )
     args = parser.parse_args()
 

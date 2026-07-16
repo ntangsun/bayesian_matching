@@ -7,9 +7,9 @@ python experiments/traces/trace_compare_constrained_1to1.py `
     --checkpoint-every 100 `
     --beta 1 `
     --pstar 0.5 `
-    --out-detail results\constrained_1to1_mcmc_vs_gibbs_detail.csv `
-    --out-comparison results\constrained_1to1_mcmc_vs_gibbs_comparison.csv `
-    --out-plot results\constrained_1to1_mcmc_vs_gibbs.png
+    --out-detail results\experiments\mcmc_vs_gibbs\constrained_1to1_mcmc_vs_gibbs_detail.csv `
+    --out-comparison results\experiments\mcmc_vs_gibbs\constrained_1to1_mcmc_vs_gibbs_comparison.csv `
+    --out-plot results\experiments\mcmc_vs_gibbs\constrained_1to1_mcmc_vs_gibbs.png
 
 experiments/traces/trace_compare_constrained_1to1.py
 
@@ -27,8 +27,8 @@ Example:
         --sim-index 1 `
         --n-mcmc 10000 `
         --checkpoint-every 100 `
-        --out-comparison results\constrained_1to1_mcmc_vs_gibbs_comparison.csv `
-        --out-plot results\constrained_1to1_mcmc_vs_gibbs.png
+        --out-comparison results\experiments\mcmc_vs_gibbs\constrained_1to1_mcmc_vs_gibbs_comparison.csv `
+        --out-plot results\experiments\mcmc_vs_gibbs\constrained_1to1_mcmc_vs_gibbs.png
 """
 
 import argparse
@@ -306,17 +306,17 @@ def main():
     parser.add_argument(
         "--out-detail",
         type=str,
-        default="results/constrained_1to1_mcmc_vs_gibbs_detail.csv",
+        default="results/experiments/mcmc_vs_gibbs/constrained_1to1_mcmc_vs_gibbs_detail.csv",
     )
     parser.add_argument(
         "--out-comparison",
         type=str,
-        default="results/constrained_1to1_mcmc_vs_gibbs_comparison.csv",
+        default="results/experiments/mcmc_vs_gibbs/constrained_1to1_mcmc_vs_gibbs_comparison.csv",
     )
     parser.add_argument(
         "--out-plot",
         type=str,
-        default="results/constrained_1to1_mcmc_vs_gibbs.png",
+        default="results/experiments/mcmc_vs_gibbs/constrained_1to1_mcmc_vs_gibbs.png",
     )
     args = parser.parse_args()
 

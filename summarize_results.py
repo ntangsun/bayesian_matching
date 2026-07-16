@@ -6,10 +6,10 @@ Summarize result CSV files and print a compact readable table.
 
 Features:
 1. Summarize one specific file:
-      python summarize_results.py --results-file results/unconstrained_1to1_beta1_2.csv
+      python summarize_results.py --results-file results/matching/unconstrained_1to1/unconstrained_1to1_beta1_2.csv
 
 2. Summarize files matching a pattern:
-      python summarize_results.py --results-dir results --pattern "unconstrained_1to1_beta1*.csv"
+      python summarize_results.py --results-dir results/matching/unconstrained_1to1 --pattern "unconstrained_1to1_beta1*.csv"
 
 3. By default, DOES NOT save a summary CSV.
    It only prints the compact summary.
@@ -21,14 +21,14 @@ Features:
       ...
 
 5. To save with a custom prefix:
-      python summarize_results.py --results-dir results --pattern "unconstrained_1to1_beta1*.csv" --save --out-prefix unconstrained_1to1_beta1_summary
+      python summarize_results.py --results-dir results/matching/unconstrained_1to1 --pattern "unconstrained_1to1_beta1*.csv" --save --out-prefix unconstrained_1to1_beta1_summary
    This creates:
       summaries/unconstrained_1to1_beta1_summary_1.csv
       summaries/unconstrained_1to1_beta1_summary_2.csv
       ...
 
 6. To save to an exact file:
-      python summarize_results.py --results-file results/run1.csv --save --out summaries/debug_summary.csv
+      python summarize_results.py --results-file results/matching/unconstrained_1to1/run1.csv --save --out summaries/debug_summary.csv
 """
 
 import argparse
@@ -95,6 +95,16 @@ def summarize_one(path, true_tau=1.0):
     elif "acceptance_count" in df.columns:
         out["mean_acceptance_count"] = df["acceptance_count"].mean()
 
+    if "change_count" in df.columns and "n_sampling_draws" in df.columns:
+        out["mean_change_rate"] = (df["change_count"] / df["n_sampling_draws"]).mean()
+    elif "change_count" in df.columns:
+        out["mean_change_count"] = df["change_count"].mean()
+
+    if "changed_iteration_count" in df.columns and "n_mcmc" in df.columns:
+        out["mean_changed_iteration_rate"] = (
+            df["changed_iteration_count"] / df["n_mcmc"]
+        ).mean()
+
     timing_cols = [
         "time_sim_total",
         "time_sim_prep",
@@ -156,6 +166,8 @@ def print_compact(summary_df):
         "coverage",
         "mean_ci_length",
         "mean_acceptance_rate",
+        "mean_change_rate",
+        "mean_changed_iteration_rate",
     ]
 
     stats_cols = [c for c in stats_cols if c in summary_df.columns]

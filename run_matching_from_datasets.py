@@ -1136,14 +1136,28 @@ def main():
     parser.add_argument("--true-tau", type=float, default=1.0)
     parser.add_argument("--profile", action="store_true", help="Record runtime breakdown columns")
 
-    parser.add_argument("--out-dir", type=str, default="results", help="Folder where result CSVs are saved")
+    parser.add_argument(
+        "--out-dir",
+        type=str,
+        default=None,
+        help=(
+            "Folder where result CSVs are saved. If omitted, or set to the "
+            "legacy value 'results', uses results/matching/<method>. Other "
+            "custom directories are used exactly as provided."
+        ),
+    )
     parser.add_argument("--out-prefix", type=str, default="results", help="Prefix for auto-numbered CSVs")
     parser.add_argument("--out", type=str, default=None, help="Exact output path. If omitted, saves out-dir/out-prefix_#.csv")
     parser.add_argument("--print-every", type=int, default=10, help="Print progress every this many simulations")
     args = parser.parse_args()
 
     if args.out is None:
-        out_path = next_incremented_path(args.out_dir, prefix=args.out_prefix, suffix=".csv")
+        requested_out_dir = Path(args.out_dir) if args.out_dir is not None else None
+        if requested_out_dir is None or requested_out_dir == Path("results"):
+            out_dir = Path("results") / "matching" / args.method
+        else:
+            out_dir = requested_out_dir
+        out_path = next_incremented_path(out_dir, prefix=args.out_prefix, suffix=".csv")
     else:
         out_path = Path(args.out)
         out_path.parent.mkdir(parents=True, exist_ok=True)

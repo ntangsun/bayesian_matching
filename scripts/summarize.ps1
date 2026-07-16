@@ -8,7 +8,7 @@
 #   - DOES NOT save unless $SaveSummary = $true
 #
 # To summarize one specific file, set:
-#   $ResultsFile = "results/unconstrained_1to1_beta1_2.csv"
+#   $ResultsFile = "results/matching/unconstrained_1to1/unconstrained_1to1_beta1_2.csv"
 #
 # To summarize files by pattern, set:
 #   $ResultsFile = ""
@@ -18,8 +18,8 @@
 #   $SaveSummary = $true
 #   $OutPrefix = "unconstrained_1to1_beta1_summary"
 
-$ResultsDir = "results"
-$ResultsFile = ""   # Example: "results/unconstrained_1to1_beta1_2.csv"
+$ResultsDir = "results/matching/constrained_1tok"
+$ResultsFile = ""   # Example: "results/matching/unconstrained_1to1/unconstrained_1to1_beta1_2.csv"
 # $Pattern = "unconstrained_1tok_beta1*.csv"
 $Pattern = "constrained_1tok_*_profile*.csv"
 # $Pattern = "unconstrained_1to1_*_profile*.csv"

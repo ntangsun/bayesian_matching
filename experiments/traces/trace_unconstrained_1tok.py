@@ -4,7 +4,7 @@ python experiments/traces/trace_unconstrained_1tok.py `
     --datasets datasets_sb01.npz `
     --n-mcmc 1000 `
     --checkpoint-every 100 `    --print-every 10 `
-    --out-detail results/unconstrained_1tok_tau_trace_by_sim.csv `\n    --out-summary results/unconstrained_1tok_tau_trace_summary.csv `\n    --out-plot results/unconstrained_1tok_tau_trace.png
+    --out-detail results/experiments/fixed_rep_traces/unconstrained_1tok/unconstrained_1tok_tau_trace_by_sim.csv `\n    --out-summary results/experiments/fixed_rep_traces/unconstrained_1tok/unconstrained_1tok_tau_trace_summary.csv `\n    --out-plot results/experiments/fixed_rep_traces/unconstrained_1tok/unconstrained_1tok_tau_trace.png
     
 experiments/traces/trace_unconstrained_1tok.py
 
@@ -213,9 +213,21 @@ def main():
     parser.add_argument("--true-tau", type=float, default=1.0)
     parser.add_argument("--max-sim", type=int, default=None, help="Optional smoke-test limit; default uses all replications")
     parser.add_argument("--print-every", type=int, default=10)
-    parser.add_argument("--out-detail", type=str, default="results/unconstrained_1tok_tau_trace_by_sim.csv")
-    parser.add_argument("--out-summary", type=str, default="results/unconstrained_1tok_tau_trace_summary.csv")
-    parser.add_argument("--out-plot", type=str, default="results/unconstrained_1tok_tau_trace.png")
+    parser.add_argument(
+        "--out-detail",
+        type=str,
+        default="results/experiments/fixed_rep_traces/unconstrained_1tok/unconstrained_1tok_tau_trace_by_sim.csv",
+    )
+    parser.add_argument(
+        "--out-summary",
+        type=str,
+        default="results/experiments/fixed_rep_traces/unconstrained_1tok/unconstrained_1tok_tau_trace_summary.csv",
+    )
+    parser.add_argument(
+        "--out-plot",
+        type=str,
+        default="results/experiments/fixed_rep_traces/unconstrained_1tok/unconstrained_1tok_tau_trace.png",
+    )
     args = parser.parse_args()
 
     if args.checkpoint_every <= 0:

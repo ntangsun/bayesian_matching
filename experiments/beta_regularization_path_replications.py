@@ -4,19 +4,19 @@ experiments/beta_regularization_path_replications.py
 
 python experiments/beta_regularization_path_replications.py `
     --n 300 `
-    --out-detail results/beta_regularization_path_replications_N300_detail.csv `
-    --out-summary results/beta_regularization_path_replications_N300_summary.csv `
-    --out-plot results/beta_regularization_path_replications_N300.png
+    --out-detail results/experiments/beta_regularization_path/beta_regularization_path_replications_N300_detail.csv `
+    --out-summary results/experiments/beta_regularization_path/beta_regularization_path_replications_N300_summary.csv `
+    --out-plot results/experiments/beta_regularization_path/beta_regularization_path_replications_N300.png
 
 python experiments/beta_regularization_path_replications.py `
     --n 300 `
     --n-reps 5 `
     --individual-reps 5 `
     --print-every 1 `
-    --out-detail results/beta_regularization_path_replications_N300_first5_detail.csv `
-    --out-summary results/beta_regularization_path_replications_N300_first5_summary.csv `
-    --out-plot results/beta_regularization_path_replications_N300_first5.png `
-    --out-individual-plot results/beta_regularization_path_replications_N300_individual_first5.png
+    --out-detail results/experiments/beta_regularization_path/beta_regularization_path_replications_N300_first5_detail.csv `
+    --out-summary results/experiments/beta_regularization_path/beta_regularization_path_replications_N300_first5_summary.csv `
+    --out-plot results/experiments/beta_regularization_path/beta_regularization_path_replications_N300_first5.png `
+    --out-individual-plot results/experiments/beta_regularization_path/beta_regularization_path_replications_N300_individual_first5.png
 
 Replicated diagnostic for finite-beta Bayesian unconstrained 1-to-1 matching.
 
@@ -378,22 +378,22 @@ def main():
     parser.add_argument(
         "--out-detail",
         type=str,
-        default="results/beta_regularization_path_replications_detail.csv",
+        default="results/experiments/beta_regularization_path/beta_regularization_path_replications_detail.csv",
     )
     parser.add_argument(
         "--out-summary",
         type=str,
-        default="results/beta_regularization_path_replications_summary.csv",
+        default="results/experiments/beta_regularization_path/beta_regularization_path_replications_summary.csv",
     )
     parser.add_argument(
         "--out-plot",
         type=str,
-        default="results/beta_regularization_path_replications.png",
+        default="results/experiments/beta_regularization_path/beta_regularization_path_replications.png",
     )
     parser.add_argument(
         "--out-individual-plot",
         type=str,
-        default="results/beta_regularization_path_replications_individual_first5.png",
+        default="results/experiments/beta_regularization_path/beta_regularization_path_replications_individual_first5.png",
     )
     args = parser.parse_args()
 
